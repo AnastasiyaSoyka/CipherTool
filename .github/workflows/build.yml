@@ -1,0 +1,62 @@
+name: Build
+
+on: workflow_call
+
+env:
+  CARGO_TERM_COLOR: always
+  CACHE_PATHS: |
+    ~/.cargo/bin/
+    ~/.cargo/registry/index/
+    ~/.cargo/registry/cache/
+    ~/.cargo/git/db/
+    target/
+
+jobs:
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CACHE_PATHS }}
+          key: build-${{ runner.OS }}-${{ hashFiles('**/Cargo.lock') }}
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Update Toolchains
+        run: rustup update
+      - name: Add Targets
+        run: rustup target add x86_64-unknown-linux-gnu
+      - name: Build
+        run: cargo build --release --target x86_64-unknown-linux-gnu
+      - name: List Artifacts
+        run: tree -a target
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ciphergen-linux-x86_64-${{ github.SHA }}
+          path: target/**/release/ciphergen
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CACHE_PATHS }}
+          key: build-${{ runner.OS }}-${{ hashFiles('**/Cargo.lock') }}
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Update Toolchains
+        run: rustup update
+      - name: Add Targets
+        run: rustup target add x86_64-pc-windows-msvc
+      - name: Build
+        run: cargo build --release --target x86_64-pc-windows-msvc
+      - name: List Artifacts
+        run: tree -a target
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ciphergen-windows-x86_64-${{ github.SHA }}
+          path: target/**/release/ciphergen.exe
