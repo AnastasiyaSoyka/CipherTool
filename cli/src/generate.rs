@@ -13,7 +13,7 @@ pub enum UsernameKind {
     Complex
 }
 
-fn create_serial(sender: Sender<Vec<u8>>, closure: impl FnOnce() -> Vec<u8>) {
+pub fn create_serial(sender: Sender<Vec<u8>>, closure: impl FnOnce() -> Vec<u8>) {
     let buffer = closure();
 
     sender.send(buffer).unwrap();

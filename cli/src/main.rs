@@ -18,11 +18,11 @@ mod config;
 mod generate;
 mod panic;
 
-use config::{parse, setup_logging, Commands, GenerateCommands, UsernameCommands};
+use config::{parse, setup_logging, Commands, CreateCommands, GenerateCommands, UsernameCommands};
 use generate::*;
 use rand::thread_rng;
 use panic::setup_panic;
-use lib::{load::*, analyze::analyze, visualize::visualize};
+use lib::{load::*, analyze::analyze, visualize::visualize, time::create_timestamp};
 
 type BoxedError<'a> = Box<dyn std::error::Error + Send + Sync + 'a>;
 type UnitResult<'a> = Result<(), BoxedError<'a>>;
@@ -34,6 +34,25 @@ fn execute() -> UnitResult<'static> {
     setup_logging(&arguments.verbosity)?;
 
     match arguments.command {
+        Commands::Create { command } => {
+            let (sender, receiver) = channel::<Vec<u8>>();
+
+            let handle = match command {
+                CreateCommands::Timestamp {
+                    format
+                } => spawn(move || create_serial(sender, || create_timestamp(format)))
+            };
+
+            let mut stdout = stdout();
+
+            for message in receiver {
+                stdout.write_all(&message)?;
+            }
+
+            stdout.flush()?;
+
+            handle.join().unwrap();
+        }
         Commands::Generate { command } => {
             let (sender, receiver) = channel::<Vec<u8>>();
 

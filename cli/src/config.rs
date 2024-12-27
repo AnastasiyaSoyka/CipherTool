@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, Args, ArgAction};
+use lib::TimestampFormats;
 use log::LevelFilter;
 
 type BoxedError<'a> = Box<dyn std::error::Error + Send + Sync + 'a>;
@@ -31,6 +32,12 @@ pub struct Verbosity {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    /// Create a parcel of data of the specified type
+    Create {
+        /// The sub-command to execute
+        #[command(subcommand)]
+        command: CreateCommands
+    },
     /// Generate a new secret key or username
     Generate {
         /// The sub-command to execute
@@ -49,6 +56,15 @@ pub enum Commands {
 
         #[arg(short = 'o', long = "output", help = "A path on a filesystem where data should be written, or leave empty to write to STDOUT")]
         output: Option<PathBuf>
+    }
+}
+
+#[derive(Subcommand)]
+pub enum CreateCommands {
+    /// Get the current time in the specified format
+    Timestamp {
+        #[arg(value_enum, short = 'f', long = "format", help = "The format to use when creating the timestamp")]
+        format: Option<TimestampFormats>
     }
 }
 

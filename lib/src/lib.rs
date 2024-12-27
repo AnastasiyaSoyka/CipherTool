@@ -16,6 +16,7 @@ pub mod corpus;
 pub mod load;
 pub mod analyze;
 pub mod visualize;
+pub mod time;
 
 pub use generators::*;
 pub use markov::*;
@@ -24,3 +25,4 @@ pub use corpus::*;
 pub use load::*;
 pub use analyze::*;
 pub use visualize::*;
+pub use time::*;
