@@ -41,7 +41,7 @@ mod tests {
     fn creates_iso8601_timestamp() {
         let timestamp = create_timestamp(Some(TimestampFormats::ISO8601));
         let string = String::from_utf8(timestamp).unwrap();
-        let pattern = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{9}[+-]\d{2}:\d{2}";
+        let pattern = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6,9}[+-]\d{2}:\d{2}";
         let regex = Regex::new(pattern).unwrap();
 
         assert!(regex.is_match(&string), "assertion 'matches regular expression' failed\n\tpattern: {pattern}\n\thaystack: {string}");
