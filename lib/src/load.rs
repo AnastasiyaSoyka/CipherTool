@@ -20,8 +20,8 @@ type VecStringResult<'a> = Result<Vec<String>, BoxedError<'a>>;
 type GeneratorResult<'a> = Result<Generator, BoxedError<'a>>;
 
 const QUALIFIER: &str = "io.github";
-const ORGANIZATION: &str = "ciphergen";
-const APPLICATION: &str = "ciphergen";
+const ORGANIZATION: &str = "ciphertool";
+const APPLICATION: &str = "ciphertool";
 const MODEL_FILE_NAME: &str = "model.bin.zst";
 
 /// Read data from a file or STDIN

@@ -34,8 +34,8 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ciphergen-linux-x86_64-${{ github.SHA }}
-          path: target/**/release/ciphergen
+          name: ciphertool-linux-x86_64-${{ github.SHA }}
+          path: target/**/release/ciphertool
   build-windows:
     name: Build Windows
     runs-on: windows-latest
@@ -58,5 +58,5 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ciphergen-windows-x86_64-${{ github.SHA }}
-          path: target/**/release/ciphergen.exe
+          name: ciphertool-windows-x86_64-${{ github.SHA }}
+          path: target/**/release/ciphertool.exe
