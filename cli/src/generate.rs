@@ -1,12 +1,10 @@
-use std::sync::{atomic::{AtomicUsize, Ordering}, mpsc::Sender};
+use std::sync::mpsc::Sender;
 
 use lib::generators::markov::generate_markov;
 use rand::thread_rng;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use lib::{generators::*, markov::Generator};
-
-const LINE_FEED: u8 = b'\n';
 
 pub enum UsernameKind {
     Simple,
@@ -22,12 +20,9 @@ pub fn create_serial(sender: Sender<Vec<u8>>, closure: impl FnOnce() -> Vec<u8>)
 fn create_parallel(sender: Sender<Vec<u8>>, count: Option<usize>, closure: impl Fn() -> Vec<u8> + Send + Sync) {
     let max = count.unwrap_or(1);
     let range = 0..max;
-    let counter = AtomicUsize::new(0);
 
     range.into_par_iter().for_each(|_| {
-        let mut buffer = closure();
-
-        if counter.fetch_add(1, Ordering::Relaxed) != max - 1 { buffer.push(LINE_FEED); }
+        let buffer = closure();
 
         sender.send(buffer).unwrap();
     });

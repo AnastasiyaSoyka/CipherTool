@@ -27,6 +27,8 @@ use lib::{load::*, analyze::analyze, visualize::visualize, time::create_timestam
 type BoxedError<'a> = Box<dyn std::error::Error + Send + Sync + 'a>;
 type UnitResult<'a> = Result<(), BoxedError<'a>>;
 
+const LINE_FEED: [u8; 1] = [b'\n'];
+
 fn execute() -> UnitResult<'static> {
     let arguments = parse();
 
@@ -55,25 +57,40 @@ fn execute() -> UnitResult<'static> {
         }
         Commands::Generate { command } => {
             let (sender, receiver) = channel::<Vec<u8>>();
+            let total: usize;
 
             let handle = match command {
                 GenerateCommands::Bytes {
                     length
-                } => spawn(move || create_bytes(sender, length)),
+                } => {
+                    total = 1;
+
+                    spawn(move || create_bytes(sender, length))
+                },
                 GenerateCommands::Hex {
                     uppercase,
                     length
-                } => spawn(move || create_hex(sender, uppercase, length)),
+                } => {
+                    total = 1;
+
+                    spawn(move || create_hex(sender, uppercase, length))
+                },
                 GenerateCommands::Base64 {
                     url_safe,
                     length
-                } => spawn(move || create_base64(sender, url_safe, length)),
+                } => {
+                    total = 1;
+
+                    spawn(move || create_base64(sender, url_safe, length))
+                },
                 GenerateCommands::Password {
                     numbers,
                     symbols,
                     length,
                     count
                 } => {
+                    total = count.unwrap_or(1);
+
                     let character_set = get_character_set(numbers, symbols);
 
                     spawn(move || create_password(sender, &character_set, length, count))
@@ -85,6 +102,8 @@ fn execute() -> UnitResult<'static> {
                     length,
                     count
                 } => {
+                    total = count.unwrap_or(1);
+
                     let mut rng = thread_rng();
                     let wordlist = get_wordlist(path, Some(&delimiter), &mut rng)?;
 
@@ -97,21 +116,37 @@ fn execute() -> UnitResult<'static> {
                     UsernameCommands::Simple {
                         length,
                         count
-                    } => spawn(move || create_username(sender, capitalize, UsernameKind::Simple, length, count)),
+                    } => {
+                        total = count.unwrap_or(1);
+
+                        spawn(move || create_username(sender, capitalize, UsernameKind::Simple, length, count))
+                    },
                     UsernameCommands::Complex {
                         length,
                         count
-                    } => spawn(move || create_username(sender, capitalize, UsernameKind::Complex, length, count))
+                    } => {
+                        total = count.unwrap_or(1);
+
+                        spawn(move || create_username(sender, capitalize, UsernameKind::Complex, length, count))
+                    }
                 },
                 GenerateCommands::Digits {
                     length,
                     count
-                } => spawn(move || create_digits(sender, length, count)),
+                } => {
+                    total = count.unwrap_or(1);
+
+                    spawn(move || create_digits(sender, length, count))
+                },
                 GenerateCommands::Number {
                     minimum,
                     maximum,
                     count
-                } => spawn(move || create_number(sender, minimum, maximum, count)),
+                } => {
+                    total = count.unwrap_or(1);
+
+                    spawn(move || create_number(sender, minimum, maximum, count))
+                },
                 GenerateCommands::Markov {
                     capitalize,
                     path,
@@ -120,6 +155,8 @@ fn execute() -> UnitResult<'static> {
                     cache_control,
                     count
                 } => {
+                    total = count.unwrap_or(1);
+
                     let (minimum, maximum) = (length_range.minimum, length_range.maximum);
                     let model_parameters = (model_parameters.order, model_parameters.prior, model_parameters.backoff);
                     let cache_control = (cache_control.no_cache, cache_control.rebuild_cache);
@@ -130,9 +167,13 @@ fn execute() -> UnitResult<'static> {
             };
 
             let mut stdout = stdout();
+            let mut counter = 0;
 
             for message in receiver {
+                counter += 1;
                 stdout.write_all(&message)?;
+
+                if counter != total { stdout.write_all(&LINE_FEED)?; }
             }
 
             stdout.flush()?;
