@@ -38,12 +38,6 @@ pub enum Commands {
         #[command(subcommand)]
         command: CreateCommands
     },
-    /// Generate a new secret key or username
-    Generate {
-        /// The sub-command to execute
-        #[command(subcommand)]
-        command: GenerateCommands
-    },
     /// Cryptographically analyze a piece of data
     Analyze {
         /// A path to a file on a filesystem, or leave empty to read from STDIN
@@ -65,11 +59,7 @@ pub enum CreateCommands {
     Timestamp {
         #[arg(value_enum, short = 'f', long = "format", help = "The format to use when creating the timestamp")]
         format: Option<TimestampFormats>
-    }
-}
-
-#[derive(Subcommand)]
-pub enum GenerateCommands {
+    },
     /// Generate random bytes
     Bytes {
         /// The number of bytes to generate
@@ -168,7 +158,7 @@ pub enum GenerateCommands {
 
         /// How many words to generate
         count: Option<usize>
-    },
+    }
 }
 
 #[derive(Subcommand)]

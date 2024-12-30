@@ -238,7 +238,7 @@ Contributions are welcome! Feel free to open an issue or pull request.
 
 - `dev` <br> All pull requests are merged into this branch. May be pushed.
 - `main` <br> Default branch. May not be pushed or force pushed.
-- `stable` <br> Points to the ref of the latest Git tag with a name matching the following regular expression: <br> `/^v?([0-9]+)\.([0-9]+)\.([0-9]+)$/` <br> May not be pushed or force pushed.
+- `stable` <br> Points to the ref of the latest Git tag with a name matching the following regular expression: <br> `/v?\d+\.\d+\.\d+/` <br> May not be pushed or force pushed.
 
 ## Building
 

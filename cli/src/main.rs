@@ -15,14 +15,14 @@ use std::sync::mpsc::channel;
 use std::thread::spawn;
 
 mod config;
-mod generate;
+mod delegate;
 mod panic;
 
-use config::{parse, setup_logging, Commands, CreateCommands, GenerateCommands, UsernameCommands};
-use generate::*;
+use config::{parse, setup_logging, Commands, CreateCommands, UsernameCommands};
+use delegate::{create_serial, create_parallel};
 use rand::thread_rng;
 use panic::setup_panic;
-use lib::{load::*, analyze::analyze, visualize::visualize, time::create_timestamp};
+use lib::{load::*, generators::*, analyze::analyze, visualize::visualize, time::create_timestamp};
 
 type BoxedError<'a> = Box<dyn std::error::Error + Send + Sync + 'a>;
 type UnitResult<'a> = Result<(), BoxedError<'a>>;
@@ -38,116 +38,67 @@ fn execute() -> UnitResult<'static> {
     match arguments.command {
         Commands::Create { command } => {
             let (sender, receiver) = channel::<Vec<u8>>();
-
-            let handle = match command {
-                CreateCommands::Timestamp {
-                    format
-                } => spawn(move || create_serial(sender, || create_timestamp(format)))
-            };
-
-            let mut stdout = stdout();
-
-            for message in receiver {
-                stdout.write_all(&message)?;
-            }
-
-            stdout.flush()?;
-
-            handle.join().unwrap();
-        }
-        Commands::Generate { command } => {
-            let (sender, receiver) = channel::<Vec<u8>>();
             let total: usize;
 
             let handle = match command {
-                GenerateCommands::Bytes {
-                    length
-                } => {
+                CreateCommands::Timestamp { format } => {
                     total = 1;
 
-                    spawn(move || create_bytes(sender, length))
+                    spawn(move || create_serial(sender, || create_timestamp(format)))
                 },
-                GenerateCommands::Hex {
-                    uppercase,
-                    length
-                } => {
+                CreateCommands::Bytes { length } => {
                     total = 1;
 
-                    spawn(move || create_hex(sender, uppercase, length))
+                    spawn(move || create_serial(sender, || generate_bytes(length)))
                 },
-                GenerateCommands::Base64 {
-                    url_safe,
-                    length
-                } => {
+                CreateCommands::Hex { uppercase, length } => {
                     total = 1;
 
-                    spawn(move || create_base64(sender, url_safe, length))
+                    spawn(move || create_serial(sender, || generate_hex(uppercase, length)))
                 },
-                GenerateCommands::Password {
-                    numbers,
-                    symbols,
-                    length,
-                    count
-                } => {
+                CreateCommands::Base64 { url_safe, length } => {
+                    total = 1;
+
+                    spawn(move || create_serial(sender, || generate_base64(url_safe, length)))
+                },
+                CreateCommands::Password { numbers, symbols, length, count } => {
                     total = count.unwrap_or(1);
 
                     let character_set = get_character_set(numbers, symbols);
 
-                    spawn(move || create_password(sender, &character_set, length, count))
+                    spawn(move || create_parallel(sender, count, || generate_password(&character_set, length)))
                 },
-                GenerateCommands::Passphrase {
-                    path,
-                    delimiter,
-                    separator,
-                    length,
-                    count
-                } => {
+                CreateCommands::Passphrase { path, delimiter, separator, length, count } => {
                     total = count.unwrap_or(1);
 
                     let mut rng = thread_rng();
                     let wordlist = get_wordlist(path, Some(&delimiter), &mut rng)?;
 
-                    spawn(move || create_passphrase(sender, &wordlist, &separator, length, count))
+                    spawn(move || create_parallel(sender, count, || generate_passphrase(&wordlist, &separator, length)))
                 },
-                GenerateCommands::Username {
-                    capitalize,
-                    command
-                } => match command {
-                    UsernameCommands::Simple {
-                        length,
-                        count
-                    } => {
+                CreateCommands::Username { capitalize, command } => match command {
+                    UsernameCommands::Simple { length, count } => {
                         total = count.unwrap_or(1);
 
-                        spawn(move || create_username(sender, capitalize, UsernameKind::Simple, length, count))
+                        spawn(move || create_parallel(sender, count, || generate_simple_username(capitalize, length)))
                     },
-                    UsernameCommands::Complex {
-                        length,
-                        count
-                    } => {
+                    UsernameCommands::Complex { length, count } => {
                         total = count.unwrap_or(1);
 
-                        spawn(move || create_username(sender, capitalize, UsernameKind::Complex, length, count))
+                        spawn(move || create_parallel(sender, count, || generate_complex_username(capitalize, length)))
                     }
                 },
-                GenerateCommands::Digits {
-                    length,
-                    count
-                } => {
+                CreateCommands::Digits { length, count } => {
                     total = count.unwrap_or(1);
 
-                    spawn(move || create_digits(sender, length, count))
+                    spawn(move || create_parallel(sender, count, || generate_digits(length)))
                 },
-                GenerateCommands::Number {
-                    minimum,
-                    maximum,
-                    count
-                } => {
+                CreateCommands::Number { minimum, maximum, count } => {
                     total = count.unwrap_or(1);
 
-                    spawn(move || create_number(sender, minimum, maximum, count))
+                    spawn(move || create_parallel(sender, count, || generate_number(minimum, maximum)))
                 },
-                GenerateCommands::Markov {
+                CreateCommands::Markov {
                     capitalize,
                     path,
                     length_range,
@@ -162,7 +113,13 @@ fn execute() -> UnitResult<'static> {
                     let cache_control = (cache_control.no_cache, cache_control.rebuild_cache);
                     let generator = get_generator(path, model_parameters, cache_control)?;
 
-                    spawn(move || create_markov(sender, &generator, capitalize, minimum, maximum, count))
+                    spawn(move || create_parallel(sender, count, || generate_markov(
+                        &generator,
+                        capitalize,
+                        minimum,
+                        maximum,
+                        &mut thread_rng()
+                    )))
                 }
             };
 
@@ -171,18 +128,22 @@ fn execute() -> UnitResult<'static> {
 
             for message in receiver {
                 counter += 1;
-                stdout.write_all(&message)?;
 
-                if counter != total { stdout.write_all(&LINE_FEED)?; }
+                if counter != total {
+                    stdout.write_all(&message)?;
+                    stdout.write_all(&LINE_FEED)?;
+                }
+                else {
+                    stdout.write_all(&message)?;
+                }
             }
 
             stdout.flush()?;
 
             handle.join().unwrap();
-        }
+        },
         Commands::Analyze { input } => {
             let buffer = read_in(input)?;
-
             let report = analyze(buffer);
 
             println!("{report}");
