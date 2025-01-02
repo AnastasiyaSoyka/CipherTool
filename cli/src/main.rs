@@ -27,7 +27,10 @@ use lib::{load::*, generators::*, analyze::analyze, visualize::visualize, time::
 type BoxedError<'a> = Box<dyn std::error::Error + Send + Sync + 'a>;
 type UnitResult<'a> = Result<(), BoxedError<'a>>;
 
-const LINE_FEED: [u8; 1] = [b'\n'];
+/**
+ * The size of the buffer used to write to stdout.
+ */
+const STDOUT_BUFFER_SIZE: usize = 65536;
 
 fn execute() -> UnitResult<'static> {
     let arguments = parse();
@@ -132,17 +135,39 @@ fn execute() -> UnitResult<'static> {
 
             let mut stdout = stdout();
             let mut counter = 0;
+            let mut buffer: [u8; STDOUT_BUFFER_SIZE] = [0; STDOUT_BUFFER_SIZE];
+            let mut size: usize = 0;
 
-            for message in receiver {
+            for mut message in receiver {
                 counter += 1;
 
+                while message.len() > 0 {
+                    // The number of bytes which should be copied to the buffer.
+                    let length = message.len().min(STDOUT_BUFFER_SIZE);
+
+                    // If the buffer doesn't have enough space left, write the buffer to stdout and reset.
+                    if (size + length) + 1 >= STDOUT_BUFFER_SIZE {
+                        stdout.write_all(&buffer)?;
+                        size = 0;
+                    }
+
+                    // Copy the message to the buffer.
+                    buffer[size..size + length].copy_from_slice(message.drain(..length).as_slice());
+
+                    // Add the number of bytes copied to the buffer to the buffer size.
+                    size += length;
+                }
+
+                // Write a line feed to the buffer if there are more messages to write.
                 if counter != total {
-                    stdout.write_all(&message)?;
-                    stdout.write_all(&LINE_FEED)?;
+                    buffer[size] = b'\n';
+                    size += 1;
                 }
-                else {
-                    stdout.write_all(&message)?;
-                }
+            }
+
+            // Write any remaining data in the buffer.
+            if size != 0 {
+                stdout.write_all(&buffer[..size])?;
             }
 
             stdout.flush()?;
