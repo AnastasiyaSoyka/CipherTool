@@ -16,8 +16,18 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": [
+                "${input:args}"
+            ],
             "cwd": "${workspaceFolder}"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "promptString",
+            "id": "args",
+            "description": "Enter the program arguments",
+            "default": "help"
         }
     ]
 }
