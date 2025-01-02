@@ -57,8 +57,11 @@ pub enum Commands {
 pub enum CreateCommands {
     /// Get the current time in the specified format
     Timestamp {
-        #[arg(value_enum, short = 'f', long = "format", help = "The format to use when creating the timestamp")]
-        format: Option<TimestampFormats>
+        #[arg(value_enum, short = 'f', long = "format", help = "The format to use when creating the timestamp", global = true)]
+        format: Option<TimestampFormats>,
+
+        #[command(subcommand)]
+        command: TimestampCommands
     },
     /// Generate random bytes
     Bytes {
@@ -179,6 +182,14 @@ pub enum UsernameCommands {
         /// How many syllabic usernames to generate
         count: Option<usize>
     }
+}
+
+#[derive(Subcommand)]
+pub enum TimestampCommands {
+    /// Create a timestamp using the UTC timezone
+    Utc,
+    /// Create a timestamp using the local timezone
+    Local
 }
 
 #[derive(Args)]

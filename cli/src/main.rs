@@ -18,11 +18,11 @@ mod config;
 mod delegate;
 mod panic;
 
-use config::{parse, setup_logging, Commands, CreateCommands, UsernameCommands};
+use config::{parse, setup_logging, Commands, CreateCommands, TimestampCommands, UsernameCommands};
 use delegate::{create_serial, create_parallel};
 use rand::thread_rng;
 use panic::setup_panic;
-use lib::{load::*, generators::*, analyze::analyze, visualize::visualize, time::create_timestamp};
+use lib::{load::*, generators::*, analyze::analyze, visualize::visualize, time::*};
 
 type BoxedError<'a> = Box<dyn std::error::Error + Send + Sync + 'a>;
 type UnitResult<'a> = Result<(), BoxedError<'a>>;
@@ -41,10 +41,17 @@ fn execute() -> UnitResult<'static> {
             let total: usize;
 
             let handle = match command {
-                CreateCommands::Timestamp { format } => {
-                    total = 1;
+                CreateCommands::Timestamp { command, format } => match command {
+                    TimestampCommands::Utc => {
+                        total = 1;
 
-                    spawn(move || create_serial(sender, || create_timestamp(format)))
+                        spawn(move || create_serial(sender, || create_timestamp_utc(format)))
+                    },
+                    TimestampCommands::Local => {
+                        total = 1;
+
+                        spawn(move || create_serial(sender, || create_timestamp_local(format)))
+                    }
                 },
                 CreateCommands::Bytes { length } => {
                     total = 1;
