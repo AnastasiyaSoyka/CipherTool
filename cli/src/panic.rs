@@ -2,6 +2,9 @@ use std::panic::set_hook;
 
 use log::error;
 
+/**
+ * Integrate the panic hook with the logging system.
+ */
 pub fn setup_panic() {
     set_hook(Box::new(|info| {
         let location = info
