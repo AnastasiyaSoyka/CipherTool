@@ -8,7 +8,6 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--release",
                     "--bin=ciphertool",
                     "--package=cli"
                 ],
